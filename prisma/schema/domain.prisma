@@ -1,0 +1,81 @@
+/// Lifecycle phase of a watched domain, derived from RDAP/EPP status + expiry.
+/// ACTIVE         registered, healthy
+/// AUTO_RENEW     past expiry, registrar auto-renew grace (still recoverable by owner)
+/// REDEMPTION     redemptionPeriod / pendingRestore (owner can redeem, others can't)
+/// PENDING_DELETE pendingDelete — deterministic 5-day countdown to the drop
+/// AVAILABLE      no registration record — registrable now (the 抢注 window)
+/// UNKNOWN        lookup failed / ambiguous — never guess (conservative)
+enum DomainPhase {
+    ACTIVE
+    AUTO_RENEW
+    REDEMPTION
+    PENDING_DELETE
+    AVAILABLE
+    UNKNOWN
+}
+
+enum DomainEventType {
+    PHASE_CHANGE
+    ENTERED_REDEMPTION
+    ENTERED_PENDING_DELETE
+    NOW_AVAILABLE
+    EXPIRATION_CHANGED
+    CHECK_ERROR
+}
+
+model Domain {
+    id            Int     @id @default(autoincrement())
+    /// Registrable domain, normalized lowercase (e.g. example.co.uk).
+    domain        String  @unique
+    tld           String
+    /// OAuth user uuid (`sub`) of the `ren` who added the watch.
+    added_by_uuid String
+    note          String?
+    enabled       Boolean @default(true)
+
+    // ---- latest RDAP snapshot ----
+    is_registered     Boolean?
+    phase             DomainPhase @default(UNKNOWN)
+    /// Raw EPP status codes from RDAP (e.g. clientTransferProhibited, pendingDelete).
+    statuses          String[]    @default([])
+    registrar         String?
+    expiration_date   DateTime?
+    /// Estimated moment the domain drops to public availability. Set the first
+    /// time PENDING_DELETE is observed (observed_at + 5d) and held stable after.
+    predicted_drop_at DateTime?
+    /// 'rdap' | 'whois' — which protocol produced the snapshot.
+    source            String?
+
+    // ---- adaptive scheduling ----
+    last_checked_at    DateTime?
+    /// The poller picks up rows where enabled = true AND next_check_at <= now().
+    /// NULL = paused (excluded by the `lte` filter).
+    next_check_at      DateTime? @default(now())
+    last_error         String?
+    consecutive_errors Int       @default(0)
+
+    created_at DateTime @default(now())
+    updated_at DateTime @updatedAt
+
+    events DomainEvent[]
+
+    @@index([enabled, next_check_at])
+    @@index([phase])
+    @@map("domain")
+}
+
+model DomainEvent {
+    id         Int             @id @default(autoincrement())
+    domain_id  Int
+    domain     Domain          @relation(fields: [domain_id], references: [id], onDelete: Cascade)
+    type       DomainEventType
+    from_phase DomainPhase?
+    to_phase   DomainPhase?
+    message    String?
+    /// Free-form snapshot payload (statuses, expiry, error text, …).
+    payload    Json?
+    created_at DateTime        @default(now())
+
+    @@index([domain_id, created_at])
+    @@map("domain_event")
+}

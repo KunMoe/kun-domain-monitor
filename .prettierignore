@@ -1,0 +1,7 @@
+.nuxt
+.output
+.nitro
+.data
+node_modules
+pnpm-lock.yaml
+prisma/generated
