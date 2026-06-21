@@ -23,6 +23,11 @@ Nuxt 4 全栈 · Nitro `scheduledTasks`（in-stack 调度，无外部 cron）· 
 ```bash
 pnpm install
 cp .env.example .env          # 填好数据库 / Redis / OAuth 配置
+
+# 先建库（prisma:push 只建表不建库）；库名需与 KUN_DATABASE_URL 中的一致
+createdb kun_domain_monitor
+# 或： psql -U postgres -c "CREATE DATABASE kun_domain_monitor"
+
 pnpm prisma:push              # 建表 + 生成 Prisma client
 pnpm dev
 ```
