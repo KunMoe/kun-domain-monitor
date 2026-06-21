@@ -15,7 +15,7 @@ const errorText = computed(() => {
 </script>
 
 <template>
-  <div class="bg-default-50 flex min-h-screen items-center justify-center px-4">
+  <div class="flex min-h-screen items-center justify-center px-4">
     <KunCard class="w-full max-w-sm p-8 text-center">
       <Icon name="lucide:radar" class="text-primary-500 mx-auto mb-3 text-4xl" />
       <h1 class="mb-1 text-xl font-bold">域名监控</h1>

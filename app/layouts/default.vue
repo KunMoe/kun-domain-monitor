@@ -17,7 +17,7 @@ const onLogout = async () => {
 </script>
 
 <template>
-  <div class="bg-default-50 text-foreground min-h-screen">
+  <div class="min-h-screen">
     <header
       class="border-default-200 bg-background/80 sticky top-0 z-30 border-b backdrop-blur"
     >

@@ -1,40 +1,16 @@
 @import 'tailwindcss';
 
-/* Design tokens + component styles from KunUI. */
+/*
+ * KunUI 1.8.x — design tokens + the library's own opinionated base layer
+ * (global resets, solid page background, themed placeholders, scrollbar
+ * helpers, body font, reduced-motion). We import the library's base.css
+ * instead of hand-rolling one, so we track its surface/elevation redesign
+ * and the canonical --color-kun-border token automatically.
+ */
 @import '@kungal/ui-tokens/css';
+@import '@kungal/ui-tokens/base.css';
 @import '@kungal/ui-vue/style.css';
 
 /* Tailwind must scan the KunUI packages to generate the utility classes they use. */
 @source '../../../node_modules/@kungal/ui-vue';
 @source '../../../node_modules/@kungal/ui-core';
-
-@layer base {
-  *,
-  ::after,
-  ::before,
-  ::backdrop,
-  ::file-selector-button {
-    border-color: var(--color-default-200, currentColor);
-    color: var(--color-foreground);
-    box-sizing: border-box;
-  }
-
-  *:focus {
-    outline: none;
-  }
-}
-
-@layer utilities {
-  body {
-    font-family:
-      -apple-system,
-      BlinkMacSystemFont,
-      'Helvetica Neue',
-      Helvetica,
-      Arial,
-      'PingFang SC',
-      'Hiragino Sans GB',
-      'Microsoft YaHei',
-      sans-serif !important;
-  }
-}
