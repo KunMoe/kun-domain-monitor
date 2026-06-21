@@ -33,10 +33,33 @@ export interface RdapLookupResult {
   /** Raw EPP status codes, e.g. ['clientTransferProhibited', 'pendingDelete']. */
   statuses: string[]
   registrar: string | null
+  registrarUrl: string | null
+  registrarIanaId: string | null
   /** ISO 8601 UTC, or null. */
   expirationDate: string | null
+  creationDate: string | null
+  updatedDate: string | null
+  /** Nameserver hostnames. */
+  nameservers: string[]
+  dnssec: boolean | null
+  transferLock: boolean | null
   source: 'rdap' | 'whois' | null
   error?: string
+}
+
+const EMPTY: Omit<RdapLookupResult, 'ok' | 'error'> = {
+  isRegistered: null,
+  statuses: [],
+  registrar: null,
+  registrarUrl: null,
+  registrarIanaId: null,
+  expirationDate: null,
+  creationDate: null,
+  updatedDate: null,
+  nameservers: [],
+  dnssec: null,
+  transferLock: null,
+  source: null
 }
 
 export const lookupDomain = async (
@@ -51,15 +74,7 @@ export const lookupDomain = async (
   })
 
   if (!ok || !record) {
-    return {
-      ok: false,
-      isRegistered: null,
-      statuses: [],
-      registrar: null,
-      expirationDate: null,
-      source: null,
-      error: error || 'RDAP/WHOIS lookup failed'
-    }
+    return { ok: false, ...EMPTY, error: error || 'RDAP/WHOIS lookup failed' }
   }
 
   return {
@@ -67,7 +82,16 @@ export const lookupDomain = async (
     isRegistered: record.isRegistered ?? null,
     statuses: (record.statuses ?? []).map((s: { status: string }) => s.status),
     registrar: record.registrar?.name ?? null,
+    registrarUrl: record.registrar?.url ?? null,
+    registrarIanaId: record.registrar?.ianaId ?? null,
     expirationDate: record.expirationDate ?? null,
+    creationDate: record.creationDate ?? null,
+    updatedDate: record.updatedDate ?? null,
+    nameservers: (record.nameservers ?? [])
+      .map((n: { host: string }) => n.host)
+      .filter(Boolean),
+    dnssec: record.dnssec?.enabled ?? null,
+    transferLock: record.transferLock ?? null,
     source: record.source ?? null
   }
 }

@@ -39,7 +39,16 @@ model Domain {
     /// Raw EPP status codes from RDAP (e.g. clientTransferProhibited, pendingDelete).
     statuses          String[]    @default([])
     registrar         String?
+    registrar_url     String?
+    registrar_iana_id String?
     expiration_date   DateTime?
+    creation_date     DateTime?
+    updated_date      DateTime?
+    /// Nameserver hostnames from the registry.
+    nameservers       String[]    @default([])
+    dnssec            Boolean?
+    /// EPP transfer lock (clientTransferProhibited et al.) active.
+    transfer_lock     Boolean?
     /// Estimated moment the domain drops to public availability. Set the first
     /// time PENDING_DELETE is observed (observed_at + 5d) and held stable after.
     predicted_drop_at DateTime?

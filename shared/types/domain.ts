@@ -17,7 +17,14 @@ export interface DomainDTO {
   phase: DomainPhaseName
   statuses: string[]
   registrar: string | null
+  registrarUrl: string | null
+  registrarIanaId: string | null
   expirationDate: string | null
+  creationDate: string | null
+  updatedDate: string | null
+  nameservers: string[]
+  dnssec: boolean | null
+  transferLock: boolean | null
   predictedDropAt: string | null
   source: string | null
   lastCheckedAt: string | null
