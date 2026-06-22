@@ -1,0 +1,121 @@
+# Production stack for Dokploy (Compose application).
+#
+# Secrets/config are filled in the Dokploy "Environment" panel using the PLAIN
+# names below (POSTGRES_PASSWORD, OAUTH_CLIENT_ID, …); Compose interpolates them
+# into the canonical NUXT_-prefixed container env that Nitro maps to runtimeConfig.
+# `${VAR:?}` fails fast if a required value is missing; `${VAR:-default}` supplies
+# a default. The one-off `migrate` job uses the plain KUN_DATABASE_URL the Prisma
+# CLI reads.
+#
+# Postgres/Redis stay on a private `internal` network AND use project-unique
+# aliases (kun-domain-monitor-postgres / kun-domain-monitor-redis). The app also
+# joins the shared dokploy-network for Traefik, where other projects alias the
+# generic `postgres`/`redis` — so the app MUST address ours by the unique alias,
+# or Docker DNS resolves the generic name to another project's database.
+#
+# Single replica only: the in-stack scheduler (domain:tick) runs in-process, so
+# running >1 replica would double-fire every minute. Do not set deploy.replicas.
+
+name: kun-domain-monitor
+
+x-db-url: &db-url postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@kun-domain-monitor-postgres:5432/${POSTGRES_DB:-kun_domain_monitor}
+
+services:
+  app:
+    image: ghcr.io/kunmoe/kun-domain-monitor:latest
+    pull_policy: always
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      # --- DB / cache (NUXT_ -> runtimeConfig) ---
+      NUXT_KUN_DATABASE_URL: *db-url
+      NUXT_REDIS_HOST: kun-domain-monitor-redis
+      NUXT_REDIS_PORT: "6379"
+      # --- OAuth client against ../kun-galgame-infra (only `ren` may sign in) ---
+      NUXT_OAUTH_SERVER_URL: ${OAUTH_SERVER_URL:-https://oauth.kungal.com/api/v1}
+      NUXT_OAUTH_CLIENT_ID: ${OAUTH_CLIENT_ID:?set OAUTH_CLIENT_ID}
+      NUXT_OAUTH_CLIENT_SECRET: ${OAUTH_CLIENT_SECRET:?set OAUTH_CLIENT_SECRET}
+      NUXT_OAUTH_REDIRECT_URI: ${OAUTH_REDIRECT_URI:-https://dm.nextmoe.dev/api/auth/callback}
+      NUXT_OAUTH_SCOPE: ${OAUTH_SCOPE:-openid profile}
+      # --- monitor tuning (optional; build-time defaults apply if unset) ---
+      NUXT_MONITOR_BATCH_SIZE: ${MONITOR_BATCH_SIZE:-20}
+      NUXT_MONITOR_LOOKUP_TIMEOUT_MS: ${MONITOR_LOOKUP_TIMEOUT_MS:-15000}
+      # Optional outbound webhook for status-change events (empty = log only).
+      NUXT_MONITOR_NOTIFY_WEBHOOK: ${MONITOR_NOTIFY_WEBHOOK:-}
+      # --- public ---
+      NUXT_PUBLIC_WEBSITE_URL: ${WEBSITE_URL:-https://dm.nextmoe.dev}
+    expose:
+      - "3000"
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "require('node:net').connect(3000,'127.0.0.1').on('connect',()=>process.exit(0)).on('error',()=>process.exit(1))"
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - dokploy-network
+      - internal
+
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-kun_domain_monitor}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-kun_domain_monitor}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      internal:
+        aliases: [kun-domain-monitor-postgres]
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--save", "60", "1", "--appendonly", "no"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      internal:
+        aliases: [kun-domain-monitor-redis]
+
+  # One-off schema sync: `docker compose --profile jobs run --rm migrate`
+  migrate:
+    image: ghcr.io/kunmoe/kun-domain-monitor:migrate
+    pull_policy: always
+    profiles: ["jobs"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      KUN_DATABASE_URL: *db-url
+    networks:
+      - internal
+
+networks:
+  dokploy-network:
+    external: true
+  internal:
+
+volumes:
+  pgdata:
+  redisdata:

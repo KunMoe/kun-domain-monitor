@@ -1,0 +1,24 @@
+# Keep the build context small and never ship local artifacts/secrets.
+# NOTE: do NOT ignore images — /public favicons must reach the build so
+# `nuxt build` bundles them into .output/public.
+.git
+.github
+node_modules
+.output
+.nuxt
+.nitro
+.data
+.cache
+.env
+.env.*
+!.env.example
+prisma/generated
+.claude
+.playwright-mcp
+*.log
+.DS_Store
+.vscode
+.idea
+# project docs aren't needed inside the image (keep README)
+*.md
+!README.md

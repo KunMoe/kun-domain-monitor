@@ -34,6 +34,25 @@ pnpm dev
 
 需要先在 kun-galgame-infra 注册一个 OAuth client，拿到 `OAUTH_CLIENT_ID` / `OAUTH_CLIENT_SECRET`，并把回调地址 `${origin}/api/auth/callback`（dev 默认 `http://localhost:3970/api/auth/callback`）登记进去。`grants` 需包含 `authorization_code` 与 `refresh_token`。
 
+## 部署（GitHub CI + Dokploy → dm.nextmoe.dev）
+
+沿用 KUN 统一管线：push `main` → GitHub Actions 构建 `run` + `migrate` 镜像推到 GHCR → 触发 Dokploy webhook 拉取重部署。相关文件：`Dockerfile`、`docker-compose.prod.yml`、`.github/workflows/deploy.yml`。
+
+本项目属于 **service infra**，自带独立的 Postgres + Redis（compose 内，私有 `internal` 网络，唯一别名 `kun-domain-monitor-postgres` / `-redis`），**不与 kungal 共用数据库**。
+
+一次性配置（Dokploy 面板）：
+- 新建 Compose 应用，指向本仓库的 `docker-compose.prod.yml`，**单副本**（调度器 in-process，多副本会重复触发）。
+- 环境变量（plain 名，compose 会映射成 `NUXT_*`）：`POSTGRES_PASSWORD`、`OAUTH_CLIENT_ID`、`OAUTH_CLIENT_SECRET` 必填；`OAUTH_SERVER_URL`/`OAUTH_REDIRECT_URI`/`WEBSITE_URL` 有默认值。
+- 域名 `dm.nextmoe.dev` → 服务 `app:3000`，Traefik 自动签发证书。
+- 关掉 Dokploy 的 Auto Deploy，改用 webhook；把 webhook 填到仓库 secret `DOKPLOY_WEBHOOK_KUN_DOMAIN_MONITOR`。
+- OAuth client 注册生产回调 `https://dm.nextmoe.dev/api/auth/callback`。
+
+首次部署后在 Dokploy Terminal 跑一次建表（**部署不会自动迁移**）：
+
+```bash
+docker compose --profile jobs run --rm migrate   # 执行 prisma db push
+```
+
 ## 架构速览
 
 ```
