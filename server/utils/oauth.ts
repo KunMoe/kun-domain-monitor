@@ -23,20 +23,33 @@ export interface OAuthUserInfo {
   updated_at?: number
 }
 
-interface Envelope<T> {
-  code: number
-  message: string
-  data: T
-}
+const upstreamError = (code: number, message: string) =>
+  createError({ statusCode: 502, data: { code, message } })
 
-const unwrap = <T>(res: Envelope<T>): T => {
-  if (!res || res.code !== 0) {
-    throw createError({
-      statusCode: 502,
-      data: { code: res?.code ?? -1, message: res?.message ?? 'OAuth upstream error' }
-    })
+/**
+ * Read a body from one of the OAuth server's *protocol* endpoints
+ * (/oauth/token, /oauth/userinfo, /oauth/revoke), which answer in either of two
+ * wire formats: the house `{ code, message, data }` envelope, or the RFC 6749
+ * top-level JSON the server emits after its standard-wire cutover. `code` is
+ * present iff the body is the envelope; a standard failure instead carries
+ * `error` / `error_description` (RFC 6749 §5.2) — though `$fetch` already
+ * throws on non-2xx, so that branch is a belt-and-braces guard.
+ */
+const readWire = <T>(res: unknown): T => {
+  if (res === null || typeof res !== 'object') {
+    throw upstreamError(-1, 'OAuth upstream returned a non-object body')
   }
-  return res.data
+  const body = res as Record<string, unknown>
+  if (typeof body.code === 'number') {
+    if (body.code !== 0) {
+      throw upstreamError(body.code, String(body.message ?? 'OAuth upstream error'))
+    }
+    return body.data as T
+  }
+  if (typeof body.error === 'string') {
+    throw upstreamError(-1, String(body.error_description ?? body.error))
+  }
+  return body as T
 }
 
 export const generatePkce = () => {
@@ -78,32 +91,28 @@ export const exchangeCode = async (
   verifier: string
 ): Promise<OAuthTokens> => {
   const config = useRuntimeConfig()
-  const res = await $fetch<Envelope<OAuthTokens>>(
-    `${config.OAUTH_SERVER_URL}/oauth/token`,
-    {
-      method: 'POST',
-      body: {
-        grant_type: 'authorization_code',
-        code,
-        redirect_uri: resolveRedirectUri(event),
-        client_id: config.OAUTH_CLIENT_ID,
-        client_secret: config.OAUTH_CLIENT_SECRET,
-        code_verifier: verifier
-      }
+  const res = await $fetch<unknown>(`${config.OAUTH_SERVER_URL}/oauth/token`, {
+    method: 'POST',
+    body: {
+      grant_type: 'authorization_code',
+      code,
+      redirect_uri: resolveRedirectUri(event),
+      client_id: config.OAUTH_CLIENT_ID,
+      client_secret: config.OAUTH_CLIENT_SECRET,
+      code_verifier: verifier
     }
-  )
-  return unwrap(res)
+  })
+  return readWire<OAuthTokens>(res)
 }
 
 export const fetchUserInfo = async (
   accessToken: string
 ): Promise<OAuthUserInfo> => {
   const config = useRuntimeConfig()
-  const res = await $fetch<Envelope<OAuthUserInfo>>(
-    `${config.OAUTH_SERVER_URL}/oauth/userinfo`,
-    { headers: { Authorization: `Bearer ${accessToken}` } }
-  )
-  return unwrap(res)
+  const res = await $fetch<unknown>(`${config.OAUTH_SERVER_URL}/oauth/userinfo`, {
+    headers: { Authorization: `Bearer ${accessToken}` }
+  })
+  return readWire<OAuthUserInfo>(res)
 }
 
 // RFC 7009: best-effort, always succeeds from the caller's POV.
