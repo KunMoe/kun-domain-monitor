@@ -28,24 +28,17 @@ const upstreamError = (code: number, message: string) =>
 
 /**
  * Read a body from one of the OAuth server's *protocol* endpoints
- * (/oauth/token, /oauth/userinfo, /oauth/revoke), which answer in either of two
- * wire formats: the house `{ code, message, data }` envelope, or the RFC 6749
- * top-level JSON the server emits after its standard-wire cutover. `code` is
- * present iff the body is the envelope; a standard failure instead carries
- * `error` / `error_description` (RFC 6749 §5.2) — though `$fetch` already
- * throws on non-2xx, so that branch is a belt-and-braces guard.
+ * (/oauth/token, /oauth/userinfo, /oauth/revoke). These speak RFC 6749 / 6750:
+ * bare top-level JSON on success, `{ error, error_description }` on failure.
+ * The house `{ code, message, data }` envelope lives on house endpoints only
+ * and never appears here. `$fetch` already throws on non-2xx, so the error
+ * branch below is a belt-and-braces guard.
  */
 const readWire = <T>(res: unknown): T => {
   if (res === null || typeof res !== 'object') {
     throw upstreamError(-1, 'OAuth upstream returned a non-object body')
   }
   const body = res as Record<string, unknown>
-  if (typeof body.code === 'number') {
-    if (body.code !== 0) {
-      throw upstreamError(body.code, String(body.message ?? 'OAuth upstream error'))
-    }
-    return body.data as T
-  }
   if (typeof body.error === 'string') {
     throw upstreamError(-1, String(body.error_description ?? body.error))
   }
