@@ -50,7 +50,7 @@
 ## OAuth（`ren`）
 
 - 全程服务端 PKCE（`server/utils/oauth.ts` + `session.ts`），verifier 走 httpOnly cookie，不进浏览器 JS。
-- **OAuth 契约的唯一真源在 `../kun-galgame-infra`（`docs/integration/oauth`）**——我们是消费方，按它的契约对接，不要自行发明端点；端点/错误码以那边为准。
+- **OAuth 契约的唯一真源在 `../nextmoe-infra`（`docs/integration/oauth`）**——我们是消费方，按它的契约对接，不要自行发明端点；端点/错误码以那边为准。
 
 ## 数据库 / Prisma
 

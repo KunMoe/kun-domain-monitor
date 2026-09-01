@@ -10,7 +10,7 @@
 - 把原始 **EPP 状态码**归纳为生命周期阶段：`正常 / 续费宽限 / 赎回期 / 待删除 / 可注册 / 未知`。
 - **自适应轮询**：离到期远时每周查一次，进入待删除后每 15 分钟查一次，临近预测掉落时间升频到每分钟。
 - 关键阶段跃迁（进入赎回 / 进入待删除 / 已掉落可注册）触发**通知**（日志 + 可选 webhook）。
-- 账号走 **../kun-galgame-infra 的 OAuth**，仅 `ren` 角色可用。
+- 账号走 **../nextmoe-infra 的 OAuth**，仅 `ren` 角色可用。
 
 它做的是**提醒**，不是真正的 drop-catch（那需要在掉落瞬间用大量注册商连接抢单）。
 
@@ -32,7 +32,7 @@ pnpm prisma:push              # 建表 + 生成 Prisma client
 pnpm dev
 ```
 
-需要先在 kun-galgame-infra 注册一个 OAuth client，拿到 `OAUTH_CLIENT_ID` / `OAUTH_CLIENT_SECRET`，并把回调地址 `${origin}/api/auth/callback`（dev 默认 `http://localhost:3970/api/auth/callback`）登记进去。`grants` 需包含 `authorization_code` 与 `refresh_token`。
+需要先在 nextmoe-infra 注册一个 OAuth client，拿到 `OAUTH_CLIENT_ID` / `OAUTH_CLIENT_SECRET`，并把回调地址 `${origin}/api/auth/callback`（dev 默认 `http://localhost:3970/api/auth/callback`）登记进去。`grants` 需包含 `authorization_code` 与 `refresh_token`。
 
 ## 部署（GitHub CI + Dokploy → dm.nextmoe.dev）
 

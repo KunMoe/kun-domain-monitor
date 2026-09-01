@@ -74,7 +74,7 @@ export default defineNuxtConfig({
     REDIS_HOST: process.env.REDIS_HOST,
     REDIS_PORT: process.env.REDIS_PORT,
 
-    // OAuth client against ../kun-galgame-infra (confidential client, server
+    // OAuth client against ../nextmoe-infra (confidential client, server
     // side only). Register the redirect_uri `${origin}/api/auth/callback`.
     OAUTH_SERVER_URL: process.env.OAUTH_SERVER_URL,
     OAUTH_CLIENT_ID: process.env.OAUTH_CLIENT_ID,

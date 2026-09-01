@@ -36,7 +36,7 @@ services:
       NUXT_KUN_DATABASE_URL: *db-url
       NUXT_REDIS_HOST: kun-domain-monitor-redis
       NUXT_REDIS_PORT: "6379"
-      # --- OAuth client against ../kun-galgame-infra (only `ren` may sign in) ---
+      # --- OAuth client against ../nextmoe-infra (only `ren` may sign in) ---
       NUXT_OAUTH_SERVER_URL: ${OAUTH_SERVER_URL:-https://oauth.kungal.com/api/v1}
       NUXT_OAUTH_CLIENT_ID: ${OAUTH_CLIENT_ID:?set OAUTH_CLIENT_ID}
       NUXT_OAUTH_CLIENT_SECRET: ${OAUTH_CLIENT_SECRET:?set OAUTH_CLIENT_SECRET}

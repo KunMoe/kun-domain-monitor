@@ -2,7 +2,7 @@ import { createHash, randomBytes } from 'node:crypto'
 import { createError, getRequestURL } from 'h3'
 import type { H3Event } from 'h3'
 
-// OAuth 2.0 Authorization Code + PKCE (S256) client against ../kun-galgame-infra.
+// OAuth 2.0 Authorization Code + PKCE (S256) client against ../nextmoe-infra.
 // Confidential client: client_secret stays server-side; the whole dance runs in
 // Nitro so the PKCE verifier never reaches the browser's JS.
 
